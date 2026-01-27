@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: support-dashboard
+    env: python
+    region: oregon
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn support_app:app
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      - key: SUPPORT_SECRET_KEY
+        generateValue: true
+      - key: FLASK_ENV
+        value: production
+      - key: SUPPORT_DATABASE_URL
+        fromDatabase:
+          name: support-db
+          property: connectionString
+      - key: CLIENT_API_URL
+        value: https://your-client-app-url.com/api
+      - key: SUPPORT_API_KEY
+        generateValue: true
+
+databases:
+  - name: support-db
+    databaseName: support_dashboard
+    user: support_user
+    plan: free
