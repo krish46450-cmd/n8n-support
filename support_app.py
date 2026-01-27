@@ -12,6 +12,12 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# Configure logging for both development and production
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+
 app = Flask(__name__)
 
 # Configuration
@@ -397,46 +403,57 @@ def api_stats():
     
     return jsonify(stats)
     
-# Function removed - not needed in support dashboard
-# Initialize database
-# @app.before_first_request
-def create_tables():
-    db.create_all()
-    
-    # Create default admin user if not exists
-    if not SupportStaff.query.filter_by(username='admin').first():
-        admin = SupportStaff(
-            username='admin',
-            email='admin@support.com',
-            role='manager'
-        )
-        admin.set_password('admin123')
-        
-        agent1 = SupportStaff(
-            username='agent1',
-            email='agent1@support.com',
-            role='agent'
-        )
-        agent1.set_password('agent123')
-        
-        agent2 = SupportStaff(
-            username='agent2',
-            email='agent2@support.com',
-            role='agent'
-        )
-        agent2.set_password('agent123')
-        
-        db.session.add_all([admin, agent1, agent2])
-        db.session.commit()
-        
-        logging.info("Default support staff created")
+# Initialize database automatically on startup
+def init_db():
+    """Initialize database tables and default users"""
+    try:
+        # Create all tables
+        db.create_all()
+        logging.info("Database tables created/verified")
+
+        # Create default admin user if not exists
+        if not SupportStaff.query.filter_by(username='admin').first():
+            admin = SupportStaff(
+                username='admin',
+                email='admin@support.com',
+                role='manager'
+            )
+            admin.set_password('admin123')
+
+            agent1 = SupportStaff(
+                username='agent1',
+                email='agent1@support.com',
+                role='agent'
+            )
+            agent1.set_password('agent123')
+
+            agent2 = SupportStaff(
+                username='agent2',
+                email='agent2@support.com',
+                role='agent'
+            )
+            agent2.set_password('agent123')
+
+            db.session.add_all([admin, agent1, agent2])
+            db.session.commit()
+
+            logging.info("Default support staff created")
+            logging.info("Manager: admin / admin123")
+            logging.info("Agent: agent1 / agent123")
+            logging.info("Agent: agent2 / agent123")
+        else:
+            logging.info("Default users already exist")
+
+    except Exception as e:
+        logging.error(f"Error initializing database: {str(e)}")
+        db.session.rollback()
+
+# Initialize database on application startup (works with Gunicorn)
+with app.app_context():
+    init_db()
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-
-    # Create tables and initialize database
-    with app.app_context():
-        create_tables()
 
     print("=" * 50)
     print("Support Dashboard Starting")
