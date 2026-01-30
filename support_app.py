@@ -95,9 +95,10 @@ class SupportTicket(db.Model):
     
     # Metadata
     conversation_id = db.Column(db.String(50), nullable=True)
+    attachments = db.Column(db.Text, nullable=True)  # JSON string of attachment file paths
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
+
     # Relationship
     assigned_staff = db.relationship('SupportStaff', backref='assigned_tickets')
     
@@ -114,9 +115,18 @@ class SupportTicket(db.Model):
     
     @property
     def email(self):
-        """Get email for template compatibility"""  
+        """Get email for template compatibility"""
         user = self.user
         return user.email if user else "Unknown"
+
+    def get_attachments(self):
+        """Parse and return attachments as a list"""
+        if not self.attachments:
+            return []
+        try:
+            return json.loads(self.attachments)
+        except:
+            return []
 
 # User model for accessing user info
 class ClientUser(db.Model):
@@ -253,11 +263,17 @@ def tickets():
 def view_ticket(ticket_id):
     try:
         ticket = SupportTicket.query.filter_by(ticket_id=ticket_id).first_or_404()
-        
+
         # Get user info
         user = ClientUser.query.get(ticket.user_id)
-        
-        return render_template('view_ticket.html', ticket=ticket, user=user)
+
+        # Get all available agents for reassignment (managers can see this)
+        available_agents = SupportStaff.query.filter(
+            SupportStaff.role.in_(['agent', 'manager']),
+            SupportStaff.is_available == True
+        ).order_by(SupportStaff.username).all()
+
+        return render_template('view_ticket.html', ticket=ticket, user=user, available_agents=available_agents)
     except Exception as e:
         logging.error(f"Error viewing ticket {ticket_id}: {str(e)}")
         flash('Error loading ticket details', 'error')
