@@ -1,5 +1,5 @@
 # support_app.py - Support Dashboard Application (Phase 2)
-from flask import Flask, render_template, request, jsonify, session, flash, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, flash, redirect, url_for, send_from_directory
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -34,6 +34,11 @@ if not database_url:
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['CLIENT_API_URL'] = os.getenv('CLIENT_API_URL', 'http://localhost:5000/api')
+
+# Shared uploads folder path (same as Client_App)
+UPLOADS_FOLDER = os.path.join(os.path.dirname(__file__), '..', 'Client_App', 'uploads')
+UPLOADS_FOLDER = os.path.abspath(UPLOADS_FOLDER)
+app.config['UPLOADS_FOLDER'] = UPLOADS_FOLDER
 
 # Initialize extensions
 db = SQLAlchemy(app)
@@ -199,6 +204,12 @@ def login():
 def logout():
     logout_user()
     return redirect(url_for('login'))
+
+# Serve uploaded files from shared Client_App uploads folder
+@app.route('/static/uploads/<path:filename>')
+def uploaded_file(filename):
+    """Serve uploaded files from the shared Client_App uploads directory"""
+    return send_from_directory(app.config['UPLOADS_FOLDER'], filename)
 
 # Dashboard Routes
 @app.route('/')
